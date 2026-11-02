@@ -1,0 +1,24 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Downloaded audio / playlist output
+downloads/
+playlist/
+
+# Logs
+logs/
+*.log
+
+# Dependencies
+node_modules/
+
+# OS / editor cruft
+.idea/
+.vscode/
+*.swp
+
+# Session / auth artifacts
+*.session
+session/

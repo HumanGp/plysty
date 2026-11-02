@@ -1,0 +1,35 @@
+{
+  "name": "playlist_generator",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "music playlist generator",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/HumanGp/playlist_generator.git"
+  },
+  "keywords": [
+    "cron_jobs",
+    "JavaScript"
+  ],
+  "author": "humangp",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HumanGp/playlist_generator/issues"
+  },
+  "homepage": "https://github.com/HumanGp/playlist_generator#readme",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "dotenv": "^18.0.4",
+    "fs-extra": "^11.4.1",
+    "music-metadata": "^11.16.1",
+    "node-cron": "^4.6.0",
+    "node-telegram-bot-api": "^2.1.0",
+    "path": "^0.12.7",
+    "prompts": "^2.4.2",
+    "teleproto": "^1.232.0"
+  }
+}
