@@ -1,7 +1,7 @@
 // ====================== printing helpers 
 
 // print propasals 
-const C = {
+export const C = {
   reset: '\x1b[0m',
   dim: '\x1b[2m',
   bold: '\x1b[1m',
@@ -13,6 +13,8 @@ const C = {
 };
 
 export function formatTasteProfile(profile) {
+  const isConfig = profile.source === 'config';
+
   const bar = (score) => {
     const filled = Math.round(score * 10);
     return `${'█'.repeat(filled)}${'░'.repeat(10 - filled)}`;
@@ -22,19 +24,28 @@ export function formatTasteProfile(profile) {
   const lines = [];
   lines.push('');
   lines.push(`${C.bold}${C.cyan}┌─ TASTE PROFILE ─────────────────────────────────────────${C.reset}`);
-  lines.push(`${C.cyan}│${C.reset}  ${C.dim}folder${C.reset}     ${profile.folder}`);
+  lines.push(`${C.cyan}│${C.reset}  ${C.dim}source${C.reset}     ${isConfig ? `${C.magenta}config${C.reset}` : 'folder scan'
+    }`);
+  if (profile.folder) {
+    lines.push(`${C.cyan}│${C.reset}  ${C.dim}folder${C.reset}     ${profile.folder}`);
+  }
   lines.push(`${C.cyan}│${C.reset}  ${C.dim}scanned${C.reset}    ${profile.scannedAt}`);
-  lines.push(`${C.cyan}│${C.reset}  ${C.dim}songs${C.reset}      ${C.bold}${profile.totalSongs}${C.reset}  ${C.dim}(scored: ${profile.scoredSongs})${C.reset}`);
 
-  const conf = profile.confidence;
-  const confColor = (v) => v >= 0.7 ? C.green : v >= 0.4 ? C.yellow : C.red;
-  lines.push(`${C.cyan}│${C.reset}  ${C.dim}confidence${C.reset} ${confColor(conf.artist)}artist ${pct(conf.artist)}${C.reset}  ${confColor(conf.genre)}genre ${pct(conf.genre)}${C.reset}  ${confColor(conf.album)}album ${pct(conf.album)}${C.reset}  ${confColor(conf.year)}year ${pct(conf.year)}${C.reset}`);
+  if (isConfig) {
+    lines.push(`${C.cyan}│${C.reset}  ${C.dim}artists${C.reset}    ${C.bold}${profile.topArtists.length}${C.reset} ${C.dim}(declared)${C.reset}`);
+  } else {
+    lines.push(`${C.cyan}│${C.reset}  ${C.dim}songs${C.reset}      ${C.bold}${profile.totalSongs}${C.reset}  ${C.dim}(scored: ${profile.scoredSongs})${C.reset}`);
+
+    const conf = profile.confidence;
+    const confColor = (v) => v >= 0.7 ? C.green : v >= 0.4 ? C.yellow : C.red;
+    lines.push(`${C.cyan}│${C.reset}  ${C.dim}confidence${C.reset} ${confColor(conf.artist)}artist ${pct(conf.artist)}${C.reset}  ${confColor(conf.genre)}genre ${pct(conf.genre)}${C.reset}  ${confColor(conf.album)}album ${pct(conf.album)}${C.reset}  ${confColor(conf.year)}year ${pct(conf.year)}${C.reset}`);
+  }
 
   const section = (title, entries) => {
     lines.push(`${C.cyan}│${C.reset}`);
     lines.push(`${C.cyan}│${C.reset}  ${C.bold}${title}${C.reset}`);
     if (entries.length === 0) {
-      lines.push(`${C.cyan}│${C.reset}    ${C.dim}— no data (untagged library) —${C.reset}`);
+      lines.push(`${C.cyan}│${C.reset}    ${C.dim}— no data —${C.reset}`);
       return;
     }
     for (const { name, score } of entries) {
@@ -123,3 +134,5 @@ export function formatDownloadSummary(manifest, outputDir) {
   lines.push('');
   return lines.join('\n');
 }
+
+
