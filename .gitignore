@@ -11,6 +11,9 @@ playlist/
 logs/
 *.log
 
+# config
+config/
+
 # Dependencies
 node_modules/
 
