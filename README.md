@@ -37,8 +37,7 @@ Don't commit .env. That session string is your whole account.
 Give it a config (your taste seeds) and it builds from that. Give it nothing and it scans the existing playlist folder and figures out taste from there. Either way: old playlist gone, new one built, shuffled, saved.
 
 ## Cron
-Give it a config (your taste seeds) and it builds from that. Give it nothing and it scans the existing playlist folder and figures out taste from there. Either way: old playlist gone, new one built, shuffled, saved.
-
+Not implemented yet - run it manually for now. When it lands it'll look like:
 
 ```
 0 23 * * 6,0  cd /path/to/project && node index.js >> logs/cron.log 2>&1
@@ -47,7 +46,7 @@ Give it a config (your taste seeds) and it builds from that. Give it nothing and
 ## Data shapes
 The network layer (Last.fm + Telegram) spits out a few plain objects that the rest of the pipeline consumes. If you're poking at services/ or writing your own renderers, here's what you get back.
 
-** Taste profile**
+**Taste profile**
 What the scanner returns after digesting a folder (or a config). Consumed by formatTasteProfile.
 
 ```JS 
@@ -100,11 +99,6 @@ What the downloader accumulates while pulling files from Telegram bots. Consumed
   ],
 }
 ```
-```
-```
-
-```
-```
 
 downloaded.length + failed.length is the total attempted. Each failed entry keeps a human-readable reason so the summary can list them line by line.
 
@@ -119,9 +113,5 @@ Streamed one line at a time during download. Consumed by formatDownloadLine.
   status: 'start' | 'ok' | 'retry' | 'fail',
   detail: 'saved to /path/...' | 'retry 2/3' | 'no bot match' | '',
 }
-```
-```
-```
-```
 ```
 
