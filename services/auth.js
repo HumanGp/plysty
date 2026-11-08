@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import prompts from 'prompts';
-import { Singleton } from './singleton.js';
+import { Singleton } from '../singleton.js';
 
 export class AuthService extends Singleton {
   client;
