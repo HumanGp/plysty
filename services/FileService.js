@@ -1,10 +1,10 @@
-// TODO: improve the playlist scan, support a config playlist file when there is no existing music files.
+// TODO: improve the playlist scan,
 // - update and improve music recommendations
 
 import fs, { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFile } from 'music-metadata';
-import { Singleton } from './singleton.js';
+import { Singleton } from '../singleton.js';
 
 
 const UNKNOWN_ARTIST = 'Unknown Artist';
@@ -46,6 +46,114 @@ export class FileService extends Singleton {
   #outputDirPath;
 
   static AUDIO_EXTS = new Set(['.mp3', '.flac', '.m4a', '.ogg', '.wav']);
+
+  static CONFIG_CANDIDATES = [
+    path.join(process.cwd(), 'config', 'taste.json'),
+    path.join(process.cwd(), 'music.config.json'),
+    path.join(process.cwd(), 'config', 'music.config.json')
+  ];
+
+  /**
+   * Look for a taste-config file. Returns the parsed object or null.
+   * Throws only on malformed JSON (a genuine user error worth surfacing)
+   * */
+
+  async #loadConfig() {
+    for (const candidate of FileService.CONFIG_CANDIDATES) {
+      try {
+        await fs.access(candidate);
+      } catch {
+        continue; // not here, try next
+      }
+      let raw;
+      try {
+        raw = await fs.readFile(candidate, 'utf8');
+      } catch (err) {
+        throw new Error(`Could not read config ${candidate}: ${err.message}`);
+      }
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        throw new Error(`Invalid JSON in ${candidate}: ${err.message}`);
+      }
+      const validated = this.#validateConfig(parsed, candidate);
+      console.log(`  ✓ Loaded taste config: ${candidate}`);
+      return validated;
+    }
+    return null;
+  }
+
+  #validateConfig(raw, source) {
+    if (!raw || typeof raw !== 'object') {
+      throw new Error(`Config ${source} must be a JSON object`);
+    }
+    const artists = raw.artists ?? [];
+    if (!Array.isArray(artists) || artists.some((a) => typeof a !== 'string' || !a.trim())) {
+      throw new Error(`Config ${source}: "artists" must be an array of non-empty strings`);
+    }
+    const genres = raw.genres ?? [];
+    if (!Array.isArray(genres) || genres.some((g) => typeof g !== 'string' || !g.trim())) {
+      throw new Error(`Config ${source}: "genres" must be an array of non-empty strings`);
+    }
+    const weight = typeof raw.weight === 'number' && raw.weight > 0 ? raw.weight : 1.0;
+    return {
+      artists: artists.map((a) => a.trim()),
+      genres: genres.map((g) => g.trim()),
+      weight,
+    };
+  }
+
+  /**
+ * Turn a config object into the same shape `#buildTasteMap` produces,
+ * so downstream code (getRecommendations, formatters) is unchanged.
+ *
+ * Declared taste → all supplied entries get equal score 1.0.
+ * "Confidence" is reported as 1.0 because these are explicit user picks,
+ * but we also tag `source: 'config'` so callers can distinguish.
+ */
+  #tasteProfileFromConfig(config) {
+    const tasteMap = {
+      artist: Object.fromEntries(config.artists.map((a) => [a, 1.0])),
+      genre: Object.fromEntries(config.genres.map((g) => [g, 1.0])),
+      album: {},
+      year: {},
+    };
+
+    const topFrom = (bucket, n) =>
+      Object.entries(bucket)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([name, score]) => ({ name, score }));
+
+    const topN = 5;
+    return {
+      scannedAt: new Date().toISOString(),
+      folder: null,
+      source: 'config',
+      totalSongs: 0,
+      scoredSongs: 0,
+      unknownTagged: { artist: 0, genre: 0, album: 0, year: 0 },
+      confidence: { artist: 1, genre: config.genres.length ? 1 : 0, album: 0, year: 0 },
+      topArtists: topFrom(tasteMap.artist, topN),
+      topGenres: topFrom(tasteMap.genre, topN),
+      topAlbums: [],
+      topYears: [],
+      tasteMap,
+    };
+  }
+
+  /**
+   * Public entry point. Config-first, folder-scan fallback.
+   * @returns {Promise<object>} same shape as getTasteProfile()
+   */
+  async getTasteProfileOrConfig(dir = this.sourceDir, opts = {}) {
+    const config = await this.#loadConfig();
+    if (config) {
+      return this.#tasteProfileFromConfig(config);
+    }
+    return this.getTasteProfile(dir, opts);
+  }
 
   /**
    * @param {string} directoryPath  Source directory containing audio files.
