@@ -2,7 +2,7 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { NewMessage } from 'teleproto/events';
-import { Singleton } from './singleton.js';
+import { Singleton } from '../singleton.js';
 
 
 const DEFAULT_BOT = process.env.MUSIC_BOT ?? '';
@@ -119,8 +119,6 @@ export class MusicService extends Singleton {
 
   async search(query, { timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
     await this.connect();
-
-    // If a previous list wait is somehow still pending, fail it loudly.
     this.#rejectPending('#pendingList', 'Superseded by new search()');
 
     const listPromise = new Promise((resolve, reject) => {
@@ -129,8 +127,8 @@ export class MusicService extends Singleton {
           this.#pendingList = null;
           reject(new Error(`List timeout after ${timeoutMs}ms for "${query}"`));
         }
-      }, timeoutMs)
-
+      }, timeoutMs);
+      this.#pendingList = { resolve, reject, timer };
     });
 
     try {
