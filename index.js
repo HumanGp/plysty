@@ -37,11 +37,11 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 import { TelegramClient } from 'teleproto';
 import { StringSession } from 'teleproto/sessions';
-import { AuthService } from './auth.js';
-import { FileService } from './FileService.js';
-import { MusicService } from './MusicWrapper.js';
+import { AuthService } from './services/auth.js';
+import { FileService } from './services/FileService.js';
+import { MusicService } from './services/MusicWrapper.js';
 import path from 'node:path';
-import { formatDownloadLine, formatTasteProfile, formatProposals, formatDownloadSummary } from './helpers.js';
+import { formatDownloadLine, formatTasteProfile, formatProposals, formatDownloadSummary, C } from './helpers.js';
 
 
 
@@ -75,20 +75,28 @@ class Plsty {
     await this.authService.authenticate();
     console.log('  ✓ Authenticated\n');
 
-    // ================================================== 2. Verify the library directory exists
-    console.log(`▸ Scanning library: ${this.fileService.sourceDir}`);
-    try {
-      await fs.access(this.fileService.sourceDir)
-    } catch {
-      throw new Error(
-        `Music directory does not exist: ${this.fileService.sourceDir}\n` +
-        `Set MUSIC_DIR in .env or create the folder.`,
-      );
+    // ================================================== 2. Build playlist taste
+    // Config-first: if ./music.config.json (or ./config/music.config.json) exists,
+    // it defines the taste profile. Otherwise we fall back to scanning the music
+    // library folder. A missing library folder is only fatal when it is the sole
+    // taste source.
+    console.log('▸ Resolving taste source…');
+    const tasteProfile = await this.fileService.getTasteProfileOrConfig(
+      this.fileService.sourceDir,
+    );
+
+    if (tasteProfile.source !== 'config') {
+      // Folder-scan path — verify the library actually exists before trusting it.
+      try {
+        await fs.access(this.fileService.sourceDir);
+      } catch {
+        throw new Error(
+          `No taste config found, and music directory does not exist: ${this.fileService.sourceDir}\n` +
+          `Either create ./music.config.json or set DOWNLOAD_DIR in .env.`,
+        );
+      }
     }
 
-
-    // ================================================== 3. Build playlist taste
-    const tasteProfile = await this.fileService.getTasteProfile(this.fileService.sourceDir);
     console.log(formatTasteProfile(tasteProfile));
 
     const existingArtists = Object.keys(tasteProfile.tasteMap.artist);
@@ -101,19 +109,20 @@ class Plsty {
 
     console.log(formatProposals(proposals));
 
-    // ================================================== 4. Connect the music bot client
+    // ================================================== 3. Connect the music bot client
     console.log('▸ Connecting music service…');
     await this.musicService.connect();
     console.log('  ✓ Connected\n');
 
-    // ================================================== 5. Fetch each track via the bot
+    // ================================================== 4. Fetch each track via the bot
     const outputDir = path.join(process.cwd(), 'playlist');
     await fs.mkdir(outputDir, { recursive: true });
 
     const manifestPath = path.join(outputDir, 'manifest.json');
     const manifest = {
       generatedAt: new Date().toISOString(),
-      sourceFolder: this.fileService.sourceDir,
+      sourceFolder: tasteProfile.folder ?? null,
+      source: tasteProfile.source ?? 'scan',
       downloaded: [],
       failed: [],
     };
